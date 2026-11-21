@@ -1,0 +1,24 @@
+{
+  "app_name": "ClaimSaathi",
+  "tagline": "Claim What's Yours – Plain-Language Welfare Navigator",
+  "disclaimer_short": "Preliminary guidance only. ClaimSaathi provides likely-eligible recommendations based on public criteria. This is not an official government sanction or guarantee.",
+  "likely_eligible": "Likely eligible",
+  "needs_more_info": "Need more information",
+  "not_likely_eligible": "Not likely eligible",
+  "verified_on": "Verified on {{date}}",
+  "pending_verification": "PENDING VERIFICATION",
+  "sample_profile_banner": "Notice: You are using a synthetic test profile for demo purposes. No real personal records are stored.",
+  "actions": {
+    "start": "Describe Your Situation",
+    "browse_schemes": "Browse All Schemes",
+    "check_eligibility": "Check Matching Schemes",
+    "confirm_profile": "Confirm Details",
+    "back": "Back",
+    "next": "Continue",
+    "skip": "Skip",
+    "retry": "Try Again",
+    "view_documents": "View Documents Checklist",
+    "how_to_apply": "How to Apply",
+    "official_portal": "Official Government Portal"
+  }
+}

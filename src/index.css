@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #1F4E79;
+    --color-primary-foreground: #FFFFFF;
+    --color-accent: #B45309;
+    --color-background: #FFFFFF;
+    --color-surface: #F5F7FA;
+    --color-text: #1A1A1A;
+    --color-text-muted: #4B5563;
+    --color-border: #CBD5E1;
+    --color-success: #166534;
+    --color-warning: #92400E;
+    --color-danger: #991B1B;
+    --color-focus: #0B5FFF;
+  }
+
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-family: 'Inter', 'Noto Sans', system-ui, sans-serif;
+  }
+
+  /* Universal accessible focus outline */
+  *:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+/* Indic Typography helpers to prevent clipping of matras and diacritics */
+.font-telugu {
+  font-family: 'Noto Sans Telugu', system-ui, sans-serif;
+  line-height: calc(1.5em + 4px) !important;
+}
+
+.font-hindi {
+  font-family: 'Noto Sans Devanagari', system-ui, sans-serif;
+  line-height: calc(1.5em + 2px) !important;
+}
+
+/* Touch target helper enforcing 44px minimum bounding box */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Print Stylesheet for Document Checklist and Guides */
+@media print {
+  header, footer, nav, .no-print, button:not(.print-include) {
+    display: none !important;
+  }
+
+  body, main {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-card {
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
