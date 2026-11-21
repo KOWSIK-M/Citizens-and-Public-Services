@@ -63,3 +63,12 @@ Each item is PENDING APPROVAL. Answer each one by ID.
 15. **D-27** Are eligibility assessments stored for the MVP, and for how long?
 16. **D-32** Storage format for scheme rules (JSON files or database rows)?
 17. **D-33** Approve the proposed Neon schema for migrations (Agent 05 review first)?
+
+## Feature batch decisions
+
+| ID | Decision or question | Status |
+|---|---|---|
+| D-34 | Claude model ID via CLAUDE_MODEL env var, not hard-coded. | PENDING VERIFICATION |
+| D-35 | Reminders are in-app only (localStorage) until channel approved. | PENDING APPROVAL |
+| D-36 | Scheme mock verified_at cleared to null. | CONFIRMED |
+

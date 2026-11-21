@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/store/useLanguageStore';
+import { addOrUpdate } from '@/store/useTrackingStore';
 import { MOCK_GOVERNMENT_SCHEMES } from '@/services/mockSchemeData';
 import { VerificationBadge } from '@/components/common/VerificationBadge';
 import { DocumentChecklist } from '@/components/scheme/DocumentChecklist';
@@ -83,6 +84,23 @@ export const SchemeDetailPage: React.FC = () => {
             <span className={getFontClass()}>
               {pick(scheme.benefit_summary_en, scheme.benefit_summary_te, scheme.benefit_summary_hi)}
             </span>
+          </div>
+
+          <div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                addOrUpdate({
+                  schemeId: scheme.id,
+                  status: 'not_started',
+                  deadline: null,
+                  updatedAt: new Date().toISOString(),
+                })
+              }
+            >
+              Track this application
+            </Button>
           </div>
         </CardHeader>
 

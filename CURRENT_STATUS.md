@@ -114,3 +114,14 @@ Note: items 6–10 are the names in the planned set as referenced in the project
   1. Approve the speech provider and eligibility-engine owner.
   2. Verify Neon Data API / JWT / RLS capabilities and review the schema.
   3. Draft the deterministic eligibility rule format and test cases with synthetic profiles.
+
+## Progress – feature batch
+
+- Deterministic eligibility tests added (vitest, 7 tests passing per tester run).
+- Scheme mock verified_at set to null in 5 records.
+- Tracking and in-app deadline reminders added (localStorage, 7 tests).
+- Claude explanation endpoint written under serverless/ai/ but NOT run, NOT deployed, NOT connected to the UI.
+- Build passes per tester run.
+- Known gap: tracked applications have no deadline because scheme data has none.
+- 8 npm audit findings not investigated.
+

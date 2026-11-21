@@ -24,7 +24,7 @@ export const MOCK_GOVERNMENT_SCHEMES: GovernmentScheme[] = [
       publisher: 'Department of School Education, Govt. of Andhra Pradesh',
       document_type: 'portal',
       retrieved_at: '2026-11-20',
-      verified_at: '2026-11-20',
+      verified_at: null,
       verified_by: 'AP Welfare Research Cell',
     },
     rules: [
@@ -150,7 +150,7 @@ export const MOCK_GOVERNMENT_SCHEMES: GovernmentScheme[] = [
       publisher: 'Society for Elimination of Rural Poverty (SERP), Andhra Pradesh',
       document_type: 'GO',
       retrieved_at: '2026-11-20',
-      verified_at: '2026-11-20',
+      verified_at: null,
       verified_by: 'AP Welfare Research Cell',
     },
     rules: [
@@ -275,7 +275,7 @@ export const MOCK_GOVERNMENT_SCHEMES: GovernmentScheme[] = [
       publisher: 'Department of Agriculture, Govt. of Andhra Pradesh',
       document_type: 'portal',
       retrieved_at: '2026-11-20',
-      verified_at: '2026-11-20',
+      verified_at: null,
       verified_by: 'AP Welfare Research Cell',
     },
     rules: [
@@ -391,7 +391,7 @@ export const MOCK_GOVERNMENT_SCHEMES: GovernmentScheme[] = [
       publisher: 'Ministry of Agriculture and Farmers Welfare, Govt. of India',
       document_type: 'portal',
       retrieved_at: '2026-11-20',
-      verified_at: '2026-11-20',
+      verified_at: null,
       verified_by: 'Central Scheme Verification Cell',
     },
     rules: [
@@ -485,7 +485,7 @@ export const MOCK_GOVERNMENT_SCHEMES: GovernmentScheme[] = [
       publisher: 'Dr. YSR Aarogyasri / NTR Vaidya Seva Health Care Trust',
       document_type: 'GO',
       retrieved_at: '2026-11-20',
-      verified_at: '2026-11-20',
+      verified_at: null,
       verified_by: 'AP Welfare Research Cell',
     },
     rules: [
