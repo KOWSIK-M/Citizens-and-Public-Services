@@ -1,93 +1,197 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/store/useLanguageStore';
+import { useProfileStore } from '@/store/useProfileStore';
+import { useTrackerStore } from '@/store/useTrackerStore';
 import { SchemeDocument } from '@/types/scheme';
+import { personaliseSchemeDocuments } from '@/services/deterministicEngine';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileCheck, Printer, Copy, Check } from 'lucide-react';
+import { FileCheck, Printer, Copy, Check, Sparkles, Share2 } from 'lucide-react';
+import { buildWhatsAppReminderUrl } from '@/utils/calendarReminder';
+import { resolveApiSetuDocSpec } from '@/config/apiSetuSchemas';
+import { ApiSetuReadinessPanel } from './ApiSetuReadinessPanel';
 
 export interface DocumentChecklistProps {
+  schemeId?: string;
+  schemeCode?: string;
   schemeNameEn: string;
   schemeNameTe: string;
   schemeNameHi: string;
+  benefitSummaryEn?: string;
+  benefitSummaryTe?: string;
+  benefitSummaryHi?: string;
+  officialPortalUrl?: string;
+  deadlineLabelEn?: string;
+  deadlineLabelTe?: string;
+  deadlineLabelHi?: string;
   documents: SchemeDocument[];
 }
 
 export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
+  schemeId = 'default-scheme',
+  schemeCode = 'SCHEME',
   schemeNameEn,
   schemeNameTe,
   schemeNameHi,
+  benefitSummaryEn = '',
+  benefitSummaryTe = '',
+  benefitSummaryHi = '',
+  officialPortalUrl = 'https://sgsw.ap.gov.in/',
+  deadlineLabelEn,
+  deadlineLabelTe,
+  deadlineLabelHi,
   documents,
 }) => {
-  const { pick, getFontClass } = useLanguage();
-  const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
+  const { pick, getFontClass, language } = useLanguage();
+  const { confirmedProfile } = useProfileStore();
+  const { getCheckedDocuments, toggleDocumentChecked } = useTrackerStore();
   const [copied, setCopied] = useState(false);
 
-  const toggleCheck = (id: string) => {
-    setCheckedIds((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  const checkedIds = getCheckedDocuments(schemeId);
+  const personalisedDocs = personaliseSchemeDocuments(documents, confirmedProfile);
 
-  const mandatoryDocs = documents.filter((d) => d.requirement === 'mandatory');
-  const optionalDocs = documents.filter((d) => d.requirement === 'optional');
+  const mandatoryDocs = personalisedDocs.filter((d) => d.effective_requirement === 'mandatory');
+  const optionalDocs = personalisedDocs.filter((d) => d.effective_requirement === 'optional');
+  const checkedMandatoryCount = mandatoryDocs.filter((d) => checkedIds[d.id]).length;
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     const schemeName = pick(schemeNameEn, schemeNameTe, schemeNameHi);
-    let text = `ClaimSaathi Document Checklist: ${schemeName}\n\n`;
-    text += `Mandatory Documents:\n`;
+    const headerLabel = pick(
+      `ClaimSaathi Personalised Document Checklist: ${schemeName}`,
+      `క్లెయిమ్ సాథీ అవసరమైన పత్రాల జాబితా: ${schemeName}`,
+      `क्लेम साथी व्यक्तिगत दस्तावेज़ सूची: ${schemeName}`
+    );
+    const mandatoryLabel = pick('Mandatory Documents:', 'తప్పనిసరి పత్రాలు:', 'अनिवार्य दस्तावेज़:');
+    const optionalLabel = pick('Optional / Conditional Documents:', 'ఐచ్ఛిక పత్రాలు:', 'वैकल्पिक दस्तावेज़:');
+
+    let text = `${headerLabel}\n\n${mandatoryLabel}\n`;
     mandatoryDocs.forEach((d, i) => {
-      text += `${i + 1}. [${checkedIds[d.id] ? 'X' : ' '}] ${pick(d.document_name_en, d.document_name_te, d.document_name_hi)}\n`;
+      text += `${i + 1}. [${checkedIds[d.id] ? '✓' : ' '}] ${pick(
+        d.document_name_en,
+        d.document_name_te,
+        d.document_name_hi
+      )}\n`;
     });
     if (optionalDocs.length > 0) {
-      text += `\nOptional Documents:\n`;
+      text += `\n${optionalLabel}\n`;
       optionalDocs.forEach((d, i) => {
-        text += `${i + 1}. [${checkedIds[d.id] ? 'X' : ' '}] ${pick(d.document_name_en, d.document_name_te, d.document_name_hi)}\n`;
+        text += `${i + 1}. [${checkedIds[d.id] ? '✓' : ' '}] ${pick(
+          d.document_name_en,
+          d.document_name_te,
+          d.document_name_hi
+        )}\n`;
       });
     }
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      setCopied(false);
+    }
   };
 
+  const whatsappUrl = buildWhatsAppReminderUrl(
+    {
+      scheme_id: schemeId,
+      scheme_code: schemeCode,
+      name_en: schemeNameEn,
+      name_te: schemeNameTe,
+      name_hi: schemeNameHi,
+      benefit_summary_en: benefitSummaryEn,
+      benefit_summary_te: benefitSummaryTe,
+      benefit_summary_hi: benefitSummaryHi,
+      official_source_url: officialPortalUrl,
+      deadline_label_en: deadlineLabelEn,
+      deadline_label_te: deadlineLabelTe,
+      deadline_label_hi: deadlineLabelHi,
+    },
+    mandatoryDocs,
+    language
+  );
+
+  if (!documents || documents.length === 0) {
+    return (
+      <Card className="border border-border shadow-sm my-6 p-6 text-center text-sm text-muted">
+        {pick(
+          'Document checklist is pending official Government Order verification.',
+          'పత్రాల జాబితా అధికారిక ప్రభుత్వ ఉత్తర్వుల ధృవీకరణ కోసం వేచి ఉంది.',
+          'दस्तावेज़ सूची आधिकारिक सरकारी आदेश सत्यापन की प्रतीक्षा में है।'
+        )}
+      </Card>
+    );
+  }
+
   return (
-    <Card className="border border-border shadow-xs my-6 print-card">
-      <CardHeader className="p-5 md:p-6 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <CardTitle className={`text-lg md:text-xl flex items-center gap-2 ${getFontClass()}`}>
-            <FileCheck className="h-5 w-5 text-primary" aria-hidden="true" />
-            <span>{pick('Required Documents Checklist', 'అవసరమైన పత్రాల జాబితా', 'आवश्यक दस्तावेज़ सूची')}</span>
-          </CardTitle>
-          <p className="text-xs md:text-sm text-muted mt-1">
+    <Card className="border border-border shadow-sm my-6 print-card">
+      <CardHeader className="p-5 md:p-6 pb-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className={`text-lg md:text-xl flex items-center gap-2 ${getFontClass()}`}>
+              <FileCheck className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+              <span>
+                {pick(
+                  'Personalised Documents Checklist',
+                  'మీ వివరాలకు తగిన పత్రాల జాబితా',
+                  'आपकी प्रोफ़ाइल के अनुसार दस्तावेज़ सूची'
+                )}
+              </span>
+            </CardTitle>
+            {confirmedProfile && (
+              <Badge variant="info" className={`inline-flex items-center gap-1 text-sm ${getFontClass()}`}>
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>
+                  {pick('Adapted to your profile', 'మీ ప్రొఫైల్‌కు అనుగుణంగా', 'आपकी प्रोफ़ाइल के अनुरूप')}
+                </span>
+              </Badge>
+            )}
+          </div>
+          <p className={`text-sm text-muted ${getFontClass()}`}>
             {pick(
-              'Tick off documents you have prepared. Your checks are saved in your current session.',
-              'మీ వద్ద ఉన్న పత్రాలను టిక్ చేయండి. ఈ సమాచారం మీ బ్రౌజర్‌లో మాత్రమే ఉంటుంది.',
-              'आपके पास मौजूद दस्तावेज़ों पर निशान लगाएं। यह जानकारी केवल आपके ब्राउज़र में रहती है।'
+              `Ready: ${checkedMandatoryCount} of ${mandatoryDocs.length} mandatory documents ticked (saved automatically in your browser).`,
+              `సిద్ధంగా ఉన్నవి: ${mandatoryDocs.length} తప్పనిసరి పత్రాలలో ${checkedMandatoryCount} టిక్ చేయబడ్డాయి.`,
+              `तैयार: ${mandatoryDocs.length} अनिवार्य दस्तावेज़ों में से ${checkedMandatoryCount} तैयार हैं।`
             )}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 no-print">
+        <div className="flex flex-wrap items-center gap-2 no-print">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleCopy}
-            className="text-xs h-9 inline-flex items-center gap-1.5"
+            className={`min-h-[44px] text-sm px-3.5 inline-flex items-center gap-1.5 ${getFontClass()}`}
           >
             {copied ? (
               <>
-                <Check className="h-3.5 w-3.5 text-success" aria-hidden="true" />
-                <span>{pick('Copied!', 'కాపీ చేయబడింది!', 'कॉपी हो गया!')}</span>
+                <Check className="h-4 w-4 text-success" aria-hidden="true" />
+                <span>{pick('Copied!', 'కాపీ అయింది!', 'कॉपी हो गया!')}</span>
               </>
             ) : (
               <>
-                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{pick('Copy List', 'జాబితాను కాపీ చేయండి', 'सूची कॉपी करें')}</span>
+                <Copy className="h-4 w-4" aria-hidden="true" />
+                <span>{pick('Copy List', 'కాపీ చేయండి', 'सूची कॉपी करें')}</span>
               </>
             )}
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={`min-h-[44px] text-sm px-3.5 inline-flex items-center gap-1.5 border-emerald-500 text-emerald-900 bg-emerald-50/70 hover:bg-emerald-100 ${getFontClass()}`}
+          >
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+              <Share2 className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+              <span>{pick('Send to WhatsApp', 'వాట్సాప్‌లో పంపండి', 'व्हाट्सएप पर भेजें')}</span>
+            </a>
           </Button>
 
           <Button
@@ -95,10 +199,10 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
             variant="default"
             size="sm"
             onClick={handlePrint}
-            className="text-xs h-9 inline-flex items-center gap-1.5"
+            className={`min-h-[44px] text-sm px-3.5 inline-flex items-center gap-1.5 ${getFontClass()}`}
           >
-            <Printer className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{pick('Print Checklist', 'జాబితాను ప్రింట్ చేయండి', 'सूची प्रिंट करें')}</span>
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span>{pick('Print Checklist', 'ప్రింట్ తీయండి', 'सूची प्रिंट करें')}</span>
           </Button>
         </div>
       </CardHeader>
@@ -106,95 +210,138 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
       <CardContent className="p-5 md:p-6 space-y-6">
         {/* Mandatory Documents */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <h4 className={`text-sm md:text-base font-bold text-body ${getFontClass()}`}>
-              {pick('Mandatory Documents', 'తప్పనిసరి పత్రాలు', 'अनिवार्य दस्तावेज़')}
-            </h4>
-            <Badge variant="danger" className="text-[10px] px-2 py-0">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <h3 className={`text-base font-bold text-body ${getFontClass()}`}>
+              {pick('Mandatory Documents to Carry', 'తప్పనిసరిగా తీసుకెళ్లాల్సిన పత్రాలు', 'साथ ले जाने योग्य अनिवार्य दस्तावेज़')}
+            </h3>
+            <Badge variant="danger" className={`text-sm px-2.5 py-0.5 ${getFontClass()}`}>
               {mandatoryDocs.length} {pick('Required', 'తప్పనిసరి', 'अनिवार्य')}
             </Badge>
           </div>
 
           <div className="space-y-3">
-            {mandatoryDocs.map((doc) => (
-              <label
-                key={doc.id}
-                className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer touch-target"
-              >
-                <input
-                  type="checkbox"
-                  checked={!!checkedIds[doc.id]}
-                  onChange={() => toggleCheck(doc.id)}
-                  className="mt-1 h-5 w-5 rounded border-slate-300 text-primary focus:ring-focus cursor-pointer"
-                />
-                <div className="flex-1">
-                  <span
-                    className={`text-sm font-semibold text-body ${
-                      checkedIds[doc.id] ? 'line-through text-muted' : ''
-                    } ${getFontClass()}`}
-                  >
-                    {pick(doc.document_name_en, doc.document_name_te, doc.document_name_hi)}
-                  </span>
-                  {doc.notes_en && (
-                    <p className="text-xs text-muted mt-0.5">
-                      {pick(doc.notes_en, doc.notes_te, doc.notes_hi)}
-                    </p>
-                  )}
-                </div>
-              </label>
-            ))}
+            {mandatoryDocs.map((doc) => {
+              const isChecked = Boolean(checkedIds[doc.id]);
+              return (
+                <label
+                  key={doc.id}
+                  className="flex items-start gap-3 p-3.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors cursor-pointer touch-target"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleDocumentChecked(schemeId, doc.id)}
+                    className="mt-1 h-5 w-5 rounded border-slate-500 text-primary focus:ring-focus cursor-pointer shrink-0"
+                  />
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`text-sm md:text-base font-semibold text-body ${
+                          isChecked ? 'line-through text-muted' : ''
+                        } ${getFontClass()}`}
+                      >
+                        {pick(doc.document_name_en, doc.document_name_te, doc.document_name_hi)}
+                      </span>
+                      {doc.personalisation_badge_en && (
+                        <Badge variant="success" className={`text-sm font-semibold ${getFontClass()}`}>
+                          {pick(
+                            doc.personalisation_badge_en,
+                            doc.personalisation_badge_te,
+                            doc.personalisation_badge_hi
+                          )}
+                        </Badge>
+                      )}
+                      {(() => {
+                        const apiSpec = resolveApiSetuDocSpec(doc);
+                        if (!apiSpec) return null;
+                        return (
+                          <Badge
+                            variant="outline"
+                            className="border-indigo-300 bg-indigo-50 text-indigo-900 text-[11px] font-mono"
+                          >
+                            {apiSpec.digilockerPullable
+                              ? `DigiLocker: ${apiSpec.docType}`
+                              : `API Setu: ${apiSpec.docType}`}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                    {doc.notes_en && (
+                      <p className={`text-sm text-muted leading-relaxed ${getFontClass()}`}>
+                        {pick(doc.notes_en, doc.notes_te, doc.notes_hi)}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
 
         {/* Optional Documents */}
         {optionalDocs.length > 0 && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <h4 className={`text-sm md:text-base font-bold text-body ${getFontClass()}`}>
-                {pick('Optional / Conditional Documents', 'ఐచ్ఛిక / షరతులతో కూడిన పత్రాలు', 'वैकल्पिक / सशर्त दस्तावेज़')}
-              </h4>
-              <Badge variant="secondary" className="text-[10px] px-2 py-0">
-                {optionalDocs.length} {pick('Optional', 'ఐచ్ఛికం', 'वैकल्पिक')}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <h3 className={`text-base font-bold text-body ${getFontClass()}`}>
+                {pick(
+                  'Conditional / Situation-Specific Documents',
+                  'షరతులతో కూడిన / ప్రత్యేక పత్రాలు',
+                  'सशर्त / विशेष स्थिति के दस्तावेज़'
+                )}
+              </h3>
+              <Badge variant="secondary" className={`text-sm px-2.5 py-0.5 ${getFontClass()}`}>
+                {optionalDocs.length} {pick('If Applicable', 'వర్తిస్తేనే', 'यदि लागू हो')}
               </Badge>
             </div>
 
             <div className="space-y-3">
-              {optionalDocs.map((doc) => (
-                <label
-                  key={doc.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer touch-target"
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!checkedIds[doc.id]}
-                    onChange={() => toggleCheck(doc.id)}
-                    className="mt-1 h-5 w-5 rounded border-slate-300 text-primary focus:ring-focus cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <span
-                      className={`text-sm font-semibold text-body ${
-                        checkedIds[doc.id] ? 'line-through text-muted' : ''
-                      } ${getFontClass()}`}
-                    >
-                      {pick(doc.document_name_en, doc.document_name_te, doc.document_name_hi)}
-                    </span>
-                    {doc.notes_en && (
-                      <p className="text-xs text-muted mt-0.5">
-                        {pick(doc.notes_en, doc.notes_te, doc.notes_hi)}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              ))}
+              {optionalDocs.map((doc) => {
+                const isChecked = Boolean(checkedIds[doc.id]);
+                return (
+                  <label
+                    key={doc.id}
+                    className="flex items-start gap-3 p-3.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors cursor-pointer touch-target"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleDocumentChecked(schemeId, doc.id)}
+                      className="mt-1 h-5 w-5 rounded border-slate-500 text-primary focus:ring-focus cursor-pointer shrink-0"
+                    />
+                    <div className="flex-1 space-y-1">
+                      <span
+                        className={`text-sm md:text-base font-semibold text-body ${
+                          isChecked ? 'line-through text-muted' : ''
+                        } ${getFontClass()}`}
+                      >
+                        {pick(doc.document_name_en, doc.document_name_te, doc.document_name_hi)}
+                      </span>
+                      {doc.notes_en && (
+                        <p className={`text-sm text-muted leading-relaxed ${getFontClass()}`}>
+                          {pick(doc.notes_en, doc.notes_te, doc.notes_hi)}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
         )}
 
-        <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 leading-relaxed">
+        {/* API Setu & DigiLocker Readiness Suite */}
+        <ApiSetuReadinessPanel documents={personalisedDocs} />
+
+        <div
+          className={`rounded-md bg-amber-50 border border-amber-300 p-4 text-sm text-amber-950 leading-relaxed ${getFontClass()}`}
+        >
+          <strong>
+            {pick('Anti-Middleman Protection:', 'దళారుల నుండి రక్షణ:', 'बिचौलियों से सावधानी:')}
+          </strong>{' '}
           {pick(
-            'Important Note: Do NOT submit original documents to unauthorized individuals or middlemen. Applications at Sachivalayam and portals accept verified photocopies only.',
-            'ముఖ్య గమనిక: అనధికార వ్యక్తులకు లేదా దళారులకు అసలు పత్రాలను ఇవ్వవద్దు. సచివాలయంలో ధృవీకరించిన నకలు పత్రాలు మాత్రమే సమర్పించండి.',
-            'महत्वपूर्ण नोट: किसी भी अनधिकृत व्यक्ति या बिचौलिये को मूल दस्तावेज़ न दें। सचिवालय और पोर्टलों पर केवल सत्यापित छायाप्रतियां स्वीकार की जाती हैं।'
+            'Never hand over original certificates, passbooks, or cash to private agents. Grama/Ward Sachivalayams and official portals accept self-attested photocopies free of charge.',
+            'అసలు సర్టిఫికెట్లు, బ్యాంక్ పాస్‌బుక్ లేదా డబ్బును ప్రైవేట్ దళారులకు ఎప్పుడూ ఇవ్వవద్దు. గ్రామ/వార్డు సచివాలయాలలో ఉచితంగా జిరాక్స్ పత్రాలతో దరఖాస్తు చేసుకోవచ్చు.',
+            'मूल प्रमाण पत्र, पासबुक या नकदी किसी निजी एजेंट/बिचौलिये को न दें। ग्राम/वार्ड सचिवालय में निःशुल्क छायाप्रतियों के साथ आवेदन स्वीकार किए जाते हैं।'
           )}
         </div>
       </CardContent>

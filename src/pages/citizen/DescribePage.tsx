@@ -3,28 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/store/useLanguageStore';
 import { useProfileStore } from '@/store/useProfileStore';
 import { PlainTextInput } from '@/components/citizen/PlainTextInput';
-import { extractCoarseProfileFromText } from '@/services/profileExtractor';
+import { extractProfileHybrid } from '@/services/profileExtractor';
 import { SYNTHETIC_SCENARIOS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit3, Sparkles } from 'lucide-react';
+import { Edit3, Sparkles, PhoneCall } from 'lucide-react';
 
 export const DescribePage: React.FC = () => {
   const { pick, getFontClass, language } = useLanguage();
-  const { setProposedProfile, loadScenario } = useProfileStore();
+  const { setExtractionOutput, loadScenario, activeScenarioId } = useProfileStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleTextSubmit = (text: string) => {
+  const handleTextSubmit = async (text: string) => {
     setIsLoading(true);
-    // Simulate brief processing delay
-    setTimeout(() => {
-      const result = extractCoarseProfileFromText(text, language);
-      setProposedProfile(result.proposed_profile);
-      setIsLoading(false);
+    try {
+      const result = await extractProfileHybrid(text, language);
+      setExtractionOutput(
+        result.proposed_profile,
+        result.extracted_fields,
+        result.clarifying_questions
+      );
       navigate(ROUTES.CONFIRM_PROFILE);
-    }, 600);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -37,55 +41,99 @@ export const DescribePage: React.FC = () => {
             'अपनी स्थिति का सरल भाषा में विवरण दें'
           )}
         </h1>
-        <p className="text-sm md:text-base text-muted leading-relaxed">
+        <p className={`text-sm md:text-base text-muted leading-relaxed ${getFontClass()}`}>
           {pick(
-            'Mention your age, family members, occupation, agricultural land (if any), and living conditions. Our engine will match relevant welfare schemes.',
-            'మీ వయస్సు, కుటుంబ సభ్యులు, వృత్తి, వ్యవసాయ భూమి (ఉంటే) మరియు ఆదాయ వివరాలను వివరించండి.',
-            'अपनी आयु, परिवार के सदस्य, व्यवसाय, कृषि भूमि (यदि है) और आय की स्थिति का उल्लेख करें।'
+            'Tell us in your own words—your age, work, whether children study in school/college, farmland or CCRC lease, or if you have a White Rice Card.',
+            'మీ వయస్సు, పని, పిల్లల చదువు, వ్యవసాయ భూమి లేదా కౌలు (CCRC), తెల్ల రైస్ కార్డు గురించి మీ సొంత మాటల్లో రాయండి లేదా మాట్లాడండి.',
+            'अपनी उम्र, काम, बच्चों की पढ़ाई, जमीन या CCRC लीज, या सफेद राशन कार्ड के बारे में अपने शब्दों में लिखें या बोलकर बताएं।'
           )}
         </p>
       </div>
 
-      {/* Preset synthetic scenario bar for hackathon demo evaluators */}
-      <Card className="border border-slate-200/90 bg-white">
-        <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-            <span>
+      {/* Live Voice Call Alternative Banner */}
+      <Card className="border-emerald-300 bg-emerald-50/60 shadow-xs">
+        <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2 className={`text-sm sm:text-base font-extrabold text-emerald-950 flex items-center gap-2 ${getFontClass()}`}>
+              <PhoneCall className="h-4 w-4 text-emerald-700 shrink-0" aria-hidden="true" />
+              <span>
+                {pick(
+                  'Prefer Talking Like a Phone Call? Try Saathi Live Voice Agent',
+                  'ఫోన్ కాల్ లాగా మాట్లాడాలనుకుంటున్నారా? సాథీ లైవ్ వాయిస్ ఏజెంట్ వాడండి',
+                  'फ़ोन कॉल की तरह बात करना चाहते हैं? साथी लाइव वॉइस एजेंट आज़माएं'
+                )}
+              </span>
+            </h2>
+            <p className={`text-xs text-emerald-900 ${getFontClass()}`}>
               {pick(
-                'Instant Demo Personas (Click to Test):',
-                'నమూనా ప్రొఫైల్స్ (వెంటనే పరీక్షించండి):',
-                'डेमो प्रोफ़ाइल (परीक्षण के लिए क्लिक करें):'
+                'Speak back-and-forth in Telugu, Hindi, or English—Saathi suggests matching schemes and helps you pick and proceed.',
+                'తెలుగు, హిందీ లేదా ఇంగ్లీష్‌లో నేరుగా మాట్లాడి మీకు సరిపోయే పథకాన్ని ఎంచుకోండి.',
+                'तेलुगु, हिंदी या अंग्रेजी में सीधे बात करें—साथी उपयुक्त योजना सुझाकर आगे बढ़ने में मदद करेगा।'
               )}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 bg-slate-50/50 flex flex-wrap gap-2">
-          {SYNTHETIC_SCENARIOS.map((sc) => (
-            <Button
-              key={sc.id}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => loadScenario(sc.id, language)}
-              className="text-xs bg-white text-slate-800 border-slate-300 hover:bg-primary hover:text-white transition-colors"
-            >
-              {pick(sc.title_en, sc.title_te, sc.title_hi)}
-            </Button>
-          ))}
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => navigate(ROUTES.VOICE_CALL)}
+            className={`min-h-[42px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold shrink-0 ${getFontClass()}`}
+          >
+            <PhoneCall className="h-4 w-4 mr-1.5" aria-hidden="true" />
+            {pick('Start Live Call', 'లైవ్ కాల్ చేయండి', 'लाइव कॉल शुरू करें')}
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Plain text input box */}
-      <Card className="border border-border shadow-xs bg-white">
-        <CardHeader className="p-5 md:p-6 pb-2">
-          <CardTitle className={`text-base md:text-lg flex items-center gap-2 ${getFontClass()}`}>
-            <Edit3 className="h-5 w-5 text-primary" aria-hidden="true" />
+      {/* Citizen-Friendly Sample Profiles Bar */}
+      <Card className="border border-slate-200 bg-white shadow-sm">
+        <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+          <h2
+            className={`text-sm font-semibold text-slate-700 flex items-center gap-1.5 ${
+              language === 'en' ? 'uppercase tracking-wider' : ''
+            } ${getFontClass()}`}
+          >
+            <Sparkles className="h-4 w-4 text-amber-600 shrink-0" aria-hidden="true" />
             <span>
               {pick(
-                'Type or Paste Your Circumstances Below',
-                'మీ వివరాలను క్రింద నమోదు చేయండి',
-                'अपनी परिस्थितियां नीचे दर्ज करें'
+                'Sample Family Stories (Tap to Load Synthetic Test Profile):',
+                'నమూనా కుటుంబ కథనాలు (పరీక్షించడానికి నొక్కండి):',
+                'नमूना पारिवारिक कहानियां (परीक्षण हेतु टैप करें):'
+              )}
+            </span>
+          </h2>
+        </CardHeader>
+        <CardContent className="p-3.5 bg-slate-50/60 flex flex-wrap gap-2">
+          {SYNTHETIC_SCENARIOS.map((sc) => {
+            const isSelected = activeScenarioId === sc.id;
+            return (
+              <Button
+                key={sc.id}
+                type="button"
+                variant={isSelected ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => loadScenario(sc.id, language)}
+                className={`min-h-[44px] text-sm px-3.5 ${
+                  isSelected
+                    ? 'bg-primary text-white'
+                    : 'bg-white text-slate-800 border-slate-300 hover:bg-primary/10 hover:text-primary'
+                } ${getFontClass()}`}
+              >
+                {pick(sc.title_en, sc.title_te, sc.title_hi)}
+              </Button>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Plain text & voice input card */}
+      <Card className="border border-border shadow-sm bg-white">
+        <CardHeader className="p-5 md:p-6 pb-2">
+          <CardTitle className={`text-base md:text-lg flex items-center gap-2 ${getFontClass()}`}>
+            <Edit3 className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+            <span>
+              {pick(
+                'Type or Speak Your Story Below',
+                'మీ వివరాలను క్రింద టైప్ చేయండి లేదా వాయిస్ ద్వారా చెప్పండి',
+                'नीचे अपनी बात लिखें या वॉइस बटन से बोलकर बताएं'
               )}
             </span>
           </CardTitle>

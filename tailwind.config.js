@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontSize: {
+        xs: ['0.875rem', { lineHeight: '1.35rem' }],
+      },
       colors: {
         primary: {
           DEFAULT: '#1F4E79',
@@ -20,6 +23,12 @@ export default {
         body: '#1A1A1A',
         muted: '#4B5563',
         border: '#CBD5E1',
+        inputBorder: '#64748B',
+        info: {
+          DEFAULT: '#1E40AF',
+          surface: '#EFF6FF',
+          border: '#BFDBFE',
+        },
         success: {
           DEFAULT: '#166534',
           surface: '#F0FDF4',
@@ -39,8 +48,8 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'Noto Sans', 'system-ui', 'sans-serif'],
-        telugu: ['"Noto Sans Telugu"', 'system-ui', 'sans-serif'],
-        hindi: ['"Noto Sans Devanagari"', 'system-ui', 'sans-serif'],
+        telugu: ['"Noto Sans Telugu"', 'Inter', 'system-ui', 'sans-serif'],
+        hindi: ['"Noto Sans Devanagari"', 'Inter', 'system-ui', 'sans-serif'],
       },
       screens: {
         sm: '640px',
@@ -51,4 +60,4 @@ export default {
     },
   },
   plugins: [],
-}
+};

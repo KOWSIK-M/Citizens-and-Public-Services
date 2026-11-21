@@ -12,6 +12,8 @@
     --color-text: #1A1A1A;
     --color-text-muted: #4B5563;
     --color-border: #CBD5E1;
+    --color-input-border: #64748B;
+    --color-info: #1E40AF;
     --color-success: #166534;
     --color-warning: #92400E;
     --color-danger: #991B1B;
@@ -21,12 +23,25 @@
   html {
     font-size: 16px;
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-surface);
     color: var(--color-text);
     font-family: 'Inter', 'Noto Sans', system-ui, sans-serif;
+    line-height: 1.55;
+    overflow-x: clip;
+  }
+
+  html[lang="te"] body {
+    font-family: 'Noto Sans Telugu', 'Inter', system-ui, sans-serif;
+    line-height: 1.75;
+  }
+
+  html[lang="hi"] body {
+    font-family: 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif;
+    line-height: 1.65;
   }
 
   /* Universal accessible focus outline */
@@ -38,19 +53,35 @@
 
 /* Indic Typography helpers to prevent clipping of matras and diacritics */
 .font-telugu {
-  font-family: 'Noto Sans Telugu', system-ui, sans-serif;
-  line-height: calc(1.5em + 4px) !important;
+  font-family: 'Noto Sans Telugu', 'Inter', system-ui, sans-serif;
+  line-height: 1.75 !important;
 }
 
 .font-hindi {
-  font-family: 'Noto Sans Devanagari', system-ui, sans-serif;
-  line-height: calc(1.5em + 2px) !important;
+  font-family: 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif;
+  line-height: 1.65 !important;
 }
 
 /* Touch target helper enforcing 44px minimum bounding box */
 .touch-target {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Vestibular accessibility: disable non-essential motion when requested */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Print Stylesheet for Document Checklist and Guides */

@@ -13,17 +13,23 @@ export interface ExtractProfileRequest {
 
 export interface ClarifyingQuestion {
   field_name: string;
+  priority_unlock_count?: number; // how many candidate schemes this question helps unlock
   question_en: string;
   question_te: string;
   question_hi: string;
+  helper_en?: string;
+  helper_te?: string;
+  helper_hi?: string;
   options: Array<{ value: string; label_en: string; label_te: string; label_hi: string }>;
 }
 
 export interface ExtractProfileResponse {
   proposed_profile: Partial<CitizenProfile>;
+  extracted_fields: string[];
   missing_critical_fields: string[];
   clarifying_questions: ClarifyingQuestion[];
   is_fallback?: boolean;
+  extraction_source?: 'claude_haiku' | 'deterministic_nlp' | 'preset';
 }
 
 export interface MatchEligibilityRequest {
@@ -36,4 +42,5 @@ export type MatchEligibilityResponse = EligibilityAssessmentResult;
 export interface SchemeListResponse {
   schemes: GovernmentScheme[];
   total: number;
+  data_source: 'neon' | 'demo';
 }

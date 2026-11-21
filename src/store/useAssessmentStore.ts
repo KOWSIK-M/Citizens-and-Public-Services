@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 import { EligibilityAssessmentResult } from '../types/eligibility';
 
-interface AssessmentState {
+const SESSION_KEY = 'claimsaathi_assessment_session_v2';
+
+export interface AssessmentState {
   assessment: EligibilityAssessmentResult | null;
   isLoading: boolean;
   error: string | null;
@@ -9,7 +11,7 @@ interface AssessmentState {
   selectedLevel: 'all' | 'central' | 'state';
 }
 
-let assessmentState: AssessmentState = {
+const INITIAL_STATE: AssessmentState = {
   assessment: null,
   isLoading: false,
   error: null,
@@ -17,46 +19,85 @@ let assessmentState: AssessmentState = {
   selectedLevel: 'all',
 };
 
-const listeners = new Set<(state: AssessmentState) => void>();
+function loadInitialAssessment(): AssessmentState {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const saved = window.sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<AssessmentState>;
+        return {
+          ...INITIAL_STATE,
+          ...parsed,
+          isLoading: false,
+        };
+      }
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return { ...INITIAL_STATE };
+}
 
-function notify() {
-  listeners.forEach((l) => l({ ...assessmentState }));
+let assessmentState: AssessmentState = loadInitialAssessment();
+
+const listeners = new Set<() => void>();
+
+function updateAssessmentState(next: AssessmentState) {
+  assessmentState = next;
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(assessmentState));
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getSnapshot(): AssessmentState {
+  return assessmentState;
+}
+
+export function setGlobalAssessment(assessment: EligibilityAssessmentResult | null) {
+  updateAssessmentState({
+    ...assessmentState,
+    assessment,
+    error: null,
+  });
+}
+
+export function resetAssessmentState() {
+  updateAssessmentState({ ...INITIAL_STATE });
 }
 
 export function useAssessmentStore() {
-  const [state, setState] = useState<AssessmentState>(assessmentState);
-
-  useEffect(() => {
-    listeners.add(setState);
-    return () => {
-      listeners.delete(setState);
-    };
-  }, []);
+  const state = useSyncExternalStore(subscribe, getSnapshot, () => INITIAL_STATE);
 
   const setAssessment = (assessment: EligibilityAssessmentResult | null) => {
-    assessmentState.assessment = assessment;
-    assessmentState.error = null;
-    notify();
+    setGlobalAssessment(assessment);
   };
 
   const setLoading = (loading: boolean) => {
-    assessmentState.isLoading = loading;
-    notify();
+    updateAssessmentState({ ...assessmentState, isLoading: loading });
   };
 
   const setError = (error: string | null) => {
-    assessmentState.error = error;
-    notify();
+    updateAssessmentState({ ...assessmentState, error });
   };
 
   const setSelectedCategory = (category: string) => {
-    assessmentState.selectedCategory = category;
-    notify();
+    updateAssessmentState({ ...assessmentState, selectedCategory: category });
   };
 
   const setSelectedLevel = (level: 'all' | 'central' | 'state') => {
-    assessmentState.selectedLevel = level;
-    notify();
+    updateAssessmentState({ ...assessmentState, selectedLevel: level });
   };
 
   return {
@@ -70,5 +111,6 @@ export function useAssessmentStore() {
     setError,
     setSelectedCategory,
     setSelectedLevel,
+    resetAssessment: resetAssessmentState,
   };
 }

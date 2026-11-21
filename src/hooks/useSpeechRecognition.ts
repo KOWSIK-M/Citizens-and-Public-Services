@@ -1,17 +1,45 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SupportedLanguage } from '@/types/i18n';
 
-// Language locale codes for Web Speech API
 const SPEECH_LOCALE_MAP: Record<SupportedLanguage, string> = {
   en: 'en-IN',
   te: 'te-IN',
   hi: 'hi-IN',
 };
 
-// Define Web Speech API types for TypeScript
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error: string;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
 interface IWindow extends Window {
-  SpeechRecognition?: any;
-  webkitSpeechRecognition?: any;
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
 }
 
 export interface UseSpeechRecognitionReturn {
@@ -33,29 +61,38 @@ export function useSpeechRecognition(
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const recognitionRef = useRef<any>(null);
-  const isSupported = typeof window !== 'undefined' && !!(
-    (window as IWindow).SpeechRecognition || (window as IWindow).webkitSpeechRecognition
-  );
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const transcriptRef = useRef('');
+  const onFinalRef = useRef(onFinalTranscript);
+
+  // Keep latest callback ref without tearing down SpeechRecognition instance on re-render!
+  useEffect(() => {
+    onFinalRef.current = onFinalTranscript;
+  }, [onFinalTranscript]);
+
+  const isSupported =
+    typeof window !== 'undefined' &&
+    Boolean((window as IWindow).SpeechRecognition || (window as IWindow).webkitSpeechRecognition);
 
   useEffect(() => {
     if (!isSupported) return;
 
     const SpeechRecognitionConstructor =
       (window as IWindow).SpeechRecognition || (window as IWindow).webkitSpeechRecognition;
+    if (!SpeechRecognitionConstructor) return;
 
     const recognition = new SpeechRecognitionConstructor();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       let finalStr = '';
       let interimStr = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        const text = result[0].transcript;
+        const text = result[0]?.transcript || '';
         if (result.isFinal) {
           finalStr += text + ' ';
         } else {
@@ -63,20 +100,19 @@ export function useSpeechRecognition(
         }
       }
 
-      if (finalStr) {
-        setTranscript((prev) => {
-          const updated = (prev ? prev + ' ' : '') + finalStr.trim();
-          if (onFinalTranscript) {
-            onFinalTranscript(updated);
-          }
-          return updated;
-        });
+      if (finalStr.trim()) {
+        const nextTranscript =
+          (transcriptRef.current ? transcriptRef.current + ' ' : '') + finalStr.trim();
+        transcriptRef.current = nextTranscript;
+        setTranscript(nextTranscript);
+        if (onFinalRef.current) {
+          onFinalRef.current(nextTranscript);
+        }
       }
       setInterimTranscript(interimStr);
     };
 
-    recognition.onerror = (event: any) => {
-      // Don't treat no-speech or aborted as fatal errors
+    recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       if (event.error === 'no-speech') {
         return;
       }
@@ -84,7 +120,7 @@ export function useSpeechRecognition(
         setIsListening(false);
         return;
       }
-      setError(event.error);
+      setError(event.error || 'speech_error');
       setIsListening(false);
     };
 
@@ -99,10 +135,10 @@ export function useSpeechRecognition(
       try {
         recognition.stop();
       } catch {
-        // ignore
+        // Ignore stop errors on unmount
       }
     };
-  }, [isSupported, onFinalTranscript]);
+  }, [isSupported]);
 
   const startListening = useCallback(
     (lang: SupportedLanguage = 'en') => {
@@ -115,14 +151,15 @@ export function useSpeechRecognition(
       setInterimTranscript('');
 
       try {
-        const locale = SPEECH_LOCALE_MAP[lang] || 'en-IN';
-        recognitionRef.current.lang = locale;
+        recognitionRef.current.lang = SPEECH_LOCALE_MAP[lang] || 'en-IN';
         recognitionRef.current.start();
         setIsListening(true);
-      } catch (err: any) {
-        // If already started, ignore or restart
-        if (err.name !== 'InvalidStateError') {
-          setError(err.message || 'error_starting_speech');
+      } catch (err: unknown) {
+        const errorObj = err as { name?: string; message?: string };
+        if (errorObj?.name === 'InvalidStateError') {
+          setIsListening(true);
+        } else {
+          setError(errorObj?.message || 'error_starting_speech');
           setIsListening(false);
         }
       }
@@ -135,12 +172,13 @@ export function useSpeechRecognition(
     try {
       recognitionRef.current.stop();
     } catch {
-      // ignore
+      // Ignore stop errors
     }
     setIsListening(false);
   }, []);
 
   const resetTranscript = useCallback(() => {
+    transcriptRef.current = '';
     setTranscript('');
     setInterimTranscript('');
   }, []);

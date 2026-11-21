@@ -11,7 +11,7 @@ export type AgeBand =
   | 'unknown';
 
 export type IncomeBand =
-  | 'below_1_2L'      // <= 1.2 Lakhs/yr (Rural BPL)
+  | 'below_1_2L'      // <= 1.2 Lakhs/yr (Rural BPL / White Rice Card)
   | '1_2L_to_2_5L'    // 1.2L - 2.5L/yr
   | '2_5L_to_5L'      // 2.5L - 5L/yr
   | 'above_5L'        // > 5L/yr
@@ -51,6 +51,8 @@ export type EducationBand =
   | 'post_graduate'
   | 'unknown';
 
+export type TriStateFlag = 'yes' | 'no' | 'unknown';
+
 export interface HouseholdMember {
   id?: string;
   relation: 'spouse' | 'child' | 'parent' | 'other';
@@ -61,13 +63,20 @@ export interface HouseholdMember {
 export interface CitizenProfile {
   age_band: AgeBand;
   state_code: 'AP';
-  district_code?: string;
+  district_code?: string; // 'unknown' or one of the 26 AP districts
   income_band: IncomeBand;
   occupation_category: OccupationCategory;
   social_category: SocialCategory;
   land_holding_band: LandHoldingBand;
   language_pref: SupportedLanguage;
   household_members: HouseholdMember[];
+  // Coarse, non-identifying household & vulnerability flags
+  has_school_student?: TriStateFlag;        // Class 1 to 12 student in household
+  has_college_student?: TriStateFlag;       // Inter / Polytechnic / Degree student in household
+  is_widow_or_single_woman?: TriStateFlag;  // Widow / destitute single woman (18+)
+  has_disability?: TriStateFlag;            // Person with benchmark disability in household/self
+  is_tenant_farmer_ccrc?: TriStateFlag;     // Cultivating leased farmland (CCRC / Koulu Rythu)
+  has_white_ration_card?: TriStateFlag;     // Everyday proxy for BPL / below_1_2L
   is_sample: boolean; // true for synthetic demo profiles
 }
 
@@ -76,6 +85,9 @@ export interface SyntheticScenarioPreset {
   title_en: string;
   title_te: string;
   title_hi: string;
+  subtitle_en?: string;
+  subtitle_te?: string;
+  subtitle_hi?: string;
   sampleInput_en: string;
   sampleInput_te: string;
   sampleInput_hi: string;

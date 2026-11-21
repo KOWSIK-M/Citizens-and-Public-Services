@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="ClaimSaathi Shield">
+  <rect width="64" height="64" rx="14" fill="#1F4E79" />
+  <path
+    d="M32 10L14 17.5V30.5C14 42.8 21.7 53.7 32 57C42.3 53.7 50 42.8 50 30.5V17.5L32 10Z"
+    fill="#FFFFFF"
+    fill-opacity="0.14"
+    stroke="#F59E0B"
+    stroke-width="2.5"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M24.5 32.5L29.8 37.8L40.5 26.5"
+    stroke="#FFFFFF"
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
